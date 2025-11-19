@@ -1,8 +1,10 @@
+const { name } = require('ejs');
 const mongoose = require('mongoose');
 
 const schema = mongoose.Schema({
+    name: {type: String, required: true},
     is_active: {type: Boolean, default: true},
-    created_by: {type: mongoose.Schema.Types.ObjectId, required:true}
+    created_by: {type: mongoose.Schema.Types.ObjectId}
 }, {
     versionKey: false, 
     timestamps:{
