@@ -22,9 +22,19 @@ class Response{
                     description: error.description
                 }
             }
+        }else if(error.message.includes("E11000")){
+            return{
+                code: Enum.HTTP_CODES.CONFLICT,
+                error:{
+                    message: "Already Exists",
+                    description: "This name or value already exists in the system."
+                }
+            }
         }
+
+
         return{
-            code: Enum.HTTP_CODES.INTERNAL_SERVER_ERROR,
+            code: Enum.HTTP_CODES.INT_SERVER_ERROR,
             error:{
                 message: "Unknown Error",
                 description: error.message

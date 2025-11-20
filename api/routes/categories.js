@@ -6,7 +6,7 @@ const CustomError = require("../lib/Error");
 const Enum = require("../config/Enum");
 
 /* GET categories listing. */
-router.get('/', async (req, res, next) =>{
+router.get('/', async (req, res) =>{
 
   try{
     let categories = await Categories.find({});
@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) =>{
   res.json({success: true});
 });
 
-router.post('/add', async (req, res, next) => {
+router.post('/add', async (req, res) => {
     let body = req.body;
     try{
         if(!body.name) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error", "Name is required");
@@ -41,7 +41,7 @@ router.post('/add', async (req, res, next) => {
 });
 
 
-router.post("/update", async (req, res, next) => {
+router.post("/update", async (req, res) => {
     let body = req.body;
 
     try{
@@ -61,16 +61,13 @@ router.post("/update", async (req, res, next) => {
     }
 });
 
-router.post("/delete", async (req, res, next) => {
+router.post("/delete", async (req, res) => {
     const body = req.body;
         
     try{
         if(!body._id) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error", "_id is required");
         
-        const result = await Categories.deleteOne({_id: body._id});
-        if (result.deletedCount === 0) {
-          throw new CustomError(Enum.HTTP_CODES.NOT_FOUND,"Not Found","Bu ID ile bir kategori bulunamadı");
-       }
+        await Categories.deleteOne({_id: body._id});
         res.json(Response.successResponse({success:true}));
 
     }catch(err){
