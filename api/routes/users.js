@@ -8,9 +8,107 @@ const bcrypt = require("bcrypt");
 const is = require("is_js");
 const CustomError = require("../lib/Error");
 const Roles = require("../db/models/Roles");
+const config = require("../config");
+const jwt = require("jwt-simple");
+
+router.post('/register', async (req, res) => {
+
+  let body = req.body;
+
+  try{
+
+    let user = await Users.findOne({});
+
+    if(user){
+      return res.sendStatus(Enum.HTTP_CODES.NOT_FOUND);
+    }
+
+    if(!body.password) throw new CustomError("password field must be filled");
+
+    if(!body.email) throw new CustomError("email is required");
+
+    if(is.not.email(body.email)) throw new CustomError ("invalid email format");
+
+    if(body.password.length < Enum.PASS_LENGTH){
+      throw new CustomError(`password must be at least ${Enum.PASS_LENGTH} characters long`);
+    }
+
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
+
+    let createdUser = await Users.create({
+      email: body.email,
+      password,
+      first_name: body.first_name,
+      last_name: body.last_name,
+      phone_number: body.phone_number,
+      is_active: true
+    });
+
+    let role = await Roles.create({
+      role_name: Enum.SUPER_ADMIN,
+      is_active: true,
+      created_by: createdUser._id
+    })
+
+    await UserRoles.create({
+      role_id: role._id,
+      user_id: createdUser._id
+    });
+
+    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({success:true}));
+
+  }catch(err){
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+
+});
+
+router.post('/auth', async (req, res) => {
+
+  try{
+
+    let{email, password} = req.body;
+
+    Users.validateFieldsBeforeAuth(email, password);
+
+    let user = await Users.findOne({email});
+
+    if(!user) throw new CustomError (Enum.HTTP_CODES.NOT_AUTHORIZED,"Validation Error", "Email or password wrong");
+
+    if(!user.validPassword(password)) throw new CustomError (Enum.HTTP_CODES.NOT_AUTHORIZED, "Email or password wrong");
+
+    let payload = {
+      id: user._id,
+      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME
+    }
+
+    let token = jwt.encode(payload, config.JWT.SECRET);
+
+    let userData = {
+      _id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name
+    }
+
+    res.json(Response.successResponse({token, user: userData}));
+
+  }catch(err){
+
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+});
+
+const auth = require("../lib/auth")();
+
+router.all("*", auth.authenticate(), (req, res, next) => {
+    next();// /auditlogs ile başlayan tüm endpointler için çalışır
+});
+// burada register ve auth fonksiyonlarına
 
 /* GET users listing. */
-router.get('/', async(req, res) => {
+router.get('/', auth.checkRoles("user_view"),async(req, res) => {
   
   try{
     let users = await Users.find({});
@@ -23,7 +121,7 @@ router.get('/', async(req, res) => {
   }
 });
 
-router.post('/add', async (req, res) => {
+router.post('/add', auth.checkRoles("user_add"),async (req, res) => {
 
   let body = req.body;
 
@@ -77,7 +175,7 @@ router.post('/add', async (req, res) => {
 
 });
 
-router.post('/update', async (req, res) => {
+router.post('/update', auth.checkRoles("user_update"),async (req, res) => {
 
   let body = req.body;
   let updates = {};
@@ -133,7 +231,7 @@ router.post('/update', async (req, res) => {
   }
 
 });
-router.post('/delete', async (req, res) => {
+router.post('/delete', auth.checkRoles("user_delete"),async (req, res) => {
   let body = req.body;
 
   try{
@@ -150,57 +248,5 @@ router.post('/delete', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
-
-  let body = req.body;
-
-  try{
-
-    let user = await Users.findOne({});
-
-    if(user){
-      return res.sendStatus(Enum.HTTP_CODES.NOT_FOUND);
-    }
-
-    if(!body.password) throw new CustomError("password field must be filled");
-
-    if(!body.email) throw new CustomError("email is required");
-
-    if(is.not.email(body.email)) throw new CustomError ("invalid email format");
-
-    if(body.password.length < Enum.PASS_LENGTH){
-      throw new CustomError(`password must be at least ${Enum.PASS_LENGTH} characters long`);
-    }
-
-    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
-
-    let createdUser = await Users.create({
-      email: body.email,
-      password,
-      first_name: body.first_name,
-      last_name: body.last_name,
-      phone_number: body.phone_number,
-      is_active: true
-    });
-
-    let role = await Roles.create({
-      role_name: Enum.SUPER_ADMIN,
-      is_active: true,
-      created_by: createdUser._id
-    })
-
-    await UserRoles.create({
-      role_id: role._id,
-      user_id: createdUser._id
-    });
-
-    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({success:true}));
-
-  }catch(err){
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
-  }
-
-});
 
 module.exports = router;
