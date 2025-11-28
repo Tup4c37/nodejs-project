@@ -1,5 +1,5 @@
 const express = require("express");
-const router = express.Router;
+const router = express.Router();
 const {HTTP_CODES} = require("../config/Enum");
 const emitter = require("../lib/Emitter");
 
@@ -28,6 +28,8 @@ router.get("/", async(req, res) => {
 
     //listener tanımlaması ayrı yapılıp adı verilir(aynı fonksiyon verilebildiği için aynı memory kullanımı sağlanır) aç-kapa işlemi yapılır
 });
+
+module.exports = router;
 
 /*client events endpointine istek atar, requestle beraber writeHead() çalışır,
 event-stream req atıldı, bağlantı hep açık ve cache, dönüşüm yok*/

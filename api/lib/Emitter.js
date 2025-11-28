@@ -18,7 +18,7 @@ class Emitter {
     }
 
     addEmitter(name){
-        this.emitters[name] = new EventEmitter[name];
+        this.emitters[name] = new EventEmitter(name);
         return this.emitters[name];
     }
 }
