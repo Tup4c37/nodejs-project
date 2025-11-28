@@ -21,43 +21,43 @@ module.exports = {
         {
             key:"user_view",
             name:"User View",
-            group:"USERS",
+            group:"Users",
             description:"User view"
         },
         {
             key:"user_add",
             name:"User Add",
-            group:"USERS",
+            group:"Users",
             description:"User add"
         },
         {
             key:"user_update",
             name:"User Update",
-            group:"USERS",
+            group:"Users",
             description:"User update"
         },
         {
             key:"user_delete",
             name:"User Delete",
-            group:"USERS",
+            group:"Users",
             description:"User delete"
         },
         {
             key:"role_view",
             name:"Role View",
-            group:"ROLES",
+            group:"Roles",
             description:"Role view"
         },
         {
             key:"role_add",
             name:"Role Add",
-            group:"RoleS",
+            group:"Roles",
             description:"Role add"
         },
         {
             key:"role_update",
             name:"Role Update",
-            group:"RoleS",
+            group:"Roles",
             description:"Role update"
         },
         {
