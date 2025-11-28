@@ -55,9 +55,9 @@ class AuditLogs{
         });
     }
 
-    //# metodun sadece bu class da kullanılmasını (private) sağlar
+    // # metodun sadece bu class da kullanılmasını (private) sağlar
     #saveToDB({level, email, location, proc_type, log}){
-        //burada await kullanılmamasının nedeni her auditlog basmada dbye kayıt işlemini beklemek zorunda
+        //burada await kullanılmamasının nedeni her auditlog basmada dbye kayıt işlemini beklemek zorunda kalmamak
         AuditLogsModel.create({
             level,
             email,
