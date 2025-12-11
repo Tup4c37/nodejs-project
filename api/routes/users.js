@@ -5,12 +5,28 @@ const UserRoles = require("../db/models/UserRoles");
 const Response = require("../lib/Response");
 const Enum = require("../config/Enum");
 const bcrypt = require("bcrypt");
+const is = require("is_js");
 const CustomError = require("../lib/Error");
 const Roles = require("../db/models/Roles");
 const config = require("../config");
 const jwt = require("jwt-simple");
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
-const validator = require("validator");
+const {rateLimit} = require("express-rate-limit");
+const RateLimitMongo = require("rate-limit-mongo");
+
+
+const limiter = rateLimit({
+
+  store: new RateLimitMongo({
+    uri: config.CONNECTION_STRING,
+    collectionName: "rateLimits",
+    "expireTimeMs": 15*60*1000
+  }),
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  //standardHeaders: "draft-7",
+  legacyHeaders: false
+});
 
 
 router.post('/register', async (req, res) => {
@@ -29,7 +45,7 @@ router.post('/register', async (req, res) => {
 
     if(!body.email) throw new CustomError("email is required");
 
-    if(!validator.isEmail(body.email)) throw new CustomError ("invalid email format");
+    if(is.not.email(body.email)) throw new CustomError ("invalid email format");
 
     if(body.password.length < Enum.PASS_LENGTH){
       throw new CustomError(`password must be at least ${Enum.PASS_LENGTH} characters long`);
@@ -65,8 +81,8 @@ router.post('/register', async (req, res) => {
   }
 
 });
-
-router.post('/auth', async (req, res) => {
+//express-brute ve express-rate-limit ile bruteforce önlemi
+router.post('/auth', limiter,async (req, res) => {
 
   try{
 
@@ -113,7 +129,12 @@ router.all("*", auth.authenticate(), (req, res, next) => {
 router.get('/', auth.checkRoles("user_view"),async(req, res) => {
   
   try{
-    let users = await Users.find({});
+    let users = await Users.find({}, {password: 0}).lean();
+
+    for(let i = 0; i < users.length; i++){
+      let roles = await UserRoles.find({user_id: users[i]._id}).populate("role_id");//populate ile role_id ye ait rolleri Roles tablosundan çekip role_id olarak yaz
+      users[i].roles = roles;
+    }
 
     res.json(Response.successResponse(users));
 
@@ -133,7 +154,7 @@ router.post('/add', auth.checkRoles("user_add"),async (req, res) => {
 
     if(!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["email"]));
 
-    if(!validator.isEmail(body.email)) throw new CustomError (Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language));
+    if(is.not.email(body.email)) throw new CustomError (Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language));
 
 
     if(body.password.length < Enum.PASS_LENGTH){
@@ -193,6 +214,11 @@ router.post('/update', auth.checkRoles("user_update"),async (req, res) => {
     if(body.first_name) updates.first_name = body.first_name;
     if(body.last_name) updates.last_name = body.last_name;
     if(body.phone_number) updates.phone_number = body.phone_number;
+
+    if(body._id == req.user.id){
+      //throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.NEED_PERMISSIONS", req.user.language), i18n.translate("COMMON.NEED_PERMISSIONS"));
+      body.roles = null;
+    }
 
     if(Array.isArray(body.roles) && body.roles.length > 0){
 

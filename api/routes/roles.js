@@ -9,6 +9,8 @@ const role_privileges = require("../config/role_privileges");
 const config = require('../config');
 const auth = require("../lib/auth")();
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
+const UserRoles = require("../db/models/UserRoles");
+
 
 router.all("*", auth.authenticate(), (req, res, next) => {
     next();// /auditlogs ile başlayan tüm endpointler için çalışır
@@ -17,7 +19,14 @@ router.all("*", auth.authenticate(), (req, res, next) => {
 
 router.get('/', auth.checkRoles("role_view"),async (req, res) => {
     try{
-        let roles = await Roles.find({});
+        let roles = await Roles.find({}.lean());// .lean() mongo modeli değil js objesi olmasını sağlar
+
+        //roles = JSON.parse(JSON.stringify(roles)); diğer bir yöntem
+
+        for(let i = 0; i < roles.length; i++){
+            let permissions = await RolePrivileges.find({role_id: roles[i]._id});
+            roles[i].permissions = permissions;
+        }// mongodb yapısı yüzünden sadece bir model(şema) döner, find ile sadece şema alanlarını döndürüp kullandırtır,yeni alan açılamaz
 
         res.json(Response.successResponse(roles));
     }catch(err){
@@ -67,6 +76,13 @@ router.post('/update', auth.checkRoles("role_update"),async (req, res) => {
 
     try{
         if(!body._id) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language) , i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language, ["_id"]));
+
+        let userRole = await UserRoles.findOne({user_id: req.user.id, role_id: body._id});
+
+        if(userRole){
+            throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.NEED_PERMISSIONS", req.user.language) , i18n.translate("COMMON.NEED_PERMISSIONS", req.user.language));
+        }
+
         let updates= {};
         if(body.role_name) updates.role_name = body.role_name;
         if(typeof body.is_active == "boolean") updates.is_active = body.is_active;
