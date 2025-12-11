@@ -5,12 +5,13 @@ const UserRoles = require("../db/models/UserRoles");
 const Response = require("../lib/Response");
 const Enum = require("../config/Enum");
 const bcrypt = require("bcrypt");
-const is = require("is_js");
 const CustomError = require("../lib/Error");
 const Roles = require("../db/models/Roles");
 const config = require("../config");
 const jwt = require("jwt-simple");
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
+const validator = require("validator");
+
 
 router.post('/register', async (req, res) => {
 
@@ -28,7 +29,7 @@ router.post('/register', async (req, res) => {
 
     if(!body.email) throw new CustomError("email is required");
 
-    if(is.not.email(body.email)) throw new CustomError ("invalid email format");
+    if(!validator.isEmail(body.email)) throw new CustomError ("invalid email format");
 
     if(body.password.length < Enum.PASS_LENGTH){
       throw new CustomError(`password must be at least ${Enum.PASS_LENGTH} characters long`);
@@ -132,7 +133,7 @@ router.post('/add', auth.checkRoles("user_add"),async (req, res) => {
 
     if(!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["email"]));
 
-    if(is.not.email(body.email)) throw new CustomError (Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language));
+    if(!validator.isEmail(body.email)) throw new CustomError (Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language));
 
 
     if(body.password.length < Enum.PASS_LENGTH){
